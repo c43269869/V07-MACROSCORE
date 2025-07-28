@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>V07 Model Tests</title>
+    <script type="module">
+        import { runModelTests } from './src/lib/modelCalculations.ts';
+
+        // Run tests
+        window.onload = function() {
+            const output = document.getElementById('output');
+            
+            function log(text) {
+                output.innerHTML += text + '<br>';
+            }
+
+            log('=== V07 MODEL VALIDATION ===\n');
+
+            try {
+                const result = runModelTests();
+                log('✅ All tests completed successfully!');
+                log('Results: ' + JSON.stringify(result, null, 2));
+            } catch (error) {
+                log('❌ Error running tests: ' + error.message);
+                console.error(error);
+            }
+        };
+    </script>
+</head>
+<body>
+    <h1>V07 Model Tests</h1>
+    <pre id="output" style="font-family: monospace;"></pre>
+</body>
+</html> 
