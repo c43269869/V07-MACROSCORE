@@ -4,7 +4,53 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../co
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Save, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Save, RefreshCw, ToggleLeft, ToggleRight, Info } from 'lucide-react';
+
+// ADDED: Employment metric guidance by currency
+const EMPLOYMENT_METRICS: Record<string, { label: string; description: string; goodThreshold: string; badThreshold: string }> = {
+  USD: { 
+    label: "Non-Farm Payrolls (000s)", 
+    description: "Monthly job additions", 
+    goodThreshold: ">180K", 
+    badThreshold: "<100K" 
+  },
+  EUR: { 
+    label: "Employment Rate YoY (%)", 
+    description: "Year-over-year change", 
+    goodThreshold: ">+0.3%", 
+    badThreshold: "<-0.1%" 
+  },
+  GBP: { 
+    label: "Claimant Count Change (000s)", 
+    description: "Monthly change (negative = good)", 
+    goodThreshold: "<-20K", 
+    badThreshold: ">+40K" 
+  },
+  JPY: { 
+    label: "Job-to-Applicant Ratio", 
+    description: "Labor market tightness", 
+    goodThreshold: ">1.30", 
+    badThreshold: "<1.25" 
+  },
+  AUD: { 
+    label: "Participation Rate (%)", 
+    description: "Labor force participation", 
+    goodThreshold: ">66.5%", 
+    badThreshold: "<66.0%" 
+  },
+  CAD: { 
+    label: "Employment Rate (%)", 
+    description: "Employment-to-population ratio", 
+    goodThreshold: ">62.5%", 
+    badThreshold: "<61.5%" 
+  },
+  CHF: { 
+    label: "Unemployment Rate (%)", 
+    description: "Standardized unemployment (lower = better)", 
+    goodThreshold: "<2.0%", 
+    badThreshold: ">3.0%" 
+  }
+};
 
 export default function DataInput() {
   const { 
@@ -45,6 +91,9 @@ export default function DataInput() {
       }
     });
   };
+
+  // Get current employment metric info
+  const currentEmploymentMetric = EMPLOYMENT_METRICS[selectedCurrency];
 
   return (
     <div className="space-y-6">
@@ -101,6 +150,20 @@ export default function DataInput() {
                 onChange={(e) => handleMarketUpdate('gldReturn', e.target.value)}
                 placeholder="1.5"
                 step="0.1"
+              />
+            </div>
+            
+            {/* ADDED: Gold outperformance tracking */}
+            <div>
+              <label className="text-sm font-medium">
+                Gold Outperform Days 
+                <span className="text-xs text-muted-foreground ml-1">(auto-calculated)</span>
+              </label>
+              <Input 
+                type="number" 
+                value={marketData.goldOutperformDays || 0}
+                readOnly
+                className="bg-muted"
               />
             </div>
             
@@ -233,7 +296,7 @@ export default function DataInput() {
               </div>
             </div>
 
-            {/* Growth Momentum */}
+            {/* Growth Momentum - IMPROVED with currency-specific guidance */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-green-600 rounded-full"></div>
@@ -241,18 +304,22 @@ export default function DataInput() {
               </div>
               
               <div>
-                <label className="text-sm font-medium">
-                  Employment Metric 
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (NFP for USD, participation rate for AUD, etc.)
-                  </span>
-                </label>
+                <div className="flex items-center space-x-2 mb-2">
+                  <label className="text-sm font-medium">
+                    {currentEmploymentMetric.label}
+                  </label>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </div>
                 <Input 
                   type="number" 
                   value={currencyData[selectedCurrency].growthMomentum.employment.value}
                   onChange={(e) => handleCurrencyUpdate('growthMomentum', 'employment', e.target.value)}
                   step="0.1"
                 />
+                <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                  <div>{currentEmploymentMetric.description}</div>
+                  <div>Good: {currentEmploymentMetric.goodThreshold} | Bad: {currentEmploymentMetric.badThreshold}</div>
+                </div>
               </div>
               
               <div>
@@ -276,7 +343,7 @@ export default function DataInput() {
               </div>
             </div>
 
-            {/* Real Interest Edge */}
+            {/* Real Interest Edge - IMPROVED with real rate display */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-3 bg-purple-600 rounded-full"></div>
@@ -303,11 +370,17 @@ export default function DataInput() {
                 />
               </div>
               
-              <div className="p-2 bg-muted rounded text-sm">
-                Real Rate: {(
+              <div className="p-2 bg-muted rounded text-sm space-y-1">
+                <div>Real Rate: {(
                   currencyData[selectedCurrency].realInterestEdge.twoYearYield - 
                   currencyData[selectedCurrency].realInterestEdge.breakeven5Y5Y
-                ).toFixed(2)}%
+                ).toFixed(2)}%</div>
+                <div className="text-xs text-muted-foreground">
+                  Model Score: {((
+                    currencyData[selectedCurrency].realInterestEdge.twoYearYield - 
+                    currencyData[selectedCurrency].realInterestEdge.breakeven5Y5Y
+                  ) * 1.5).toFixed(2)}
+                </div>
               </div>
             </div>
 
@@ -342,12 +415,12 @@ export default function DataInput() {
         </CardContent>
       </Card>
 
-      {/* Data Sources Guide */}
+      {/* Data Sources Guide - UPDATED with CHF sources */}
       <Card>
         <CardHeader>
           <CardTitle>Data Sources Guide</CardTitle>
           <CardDescription>
-            Where to find the data for accurate model inputs
+            Where to find the data for accurate model inputs (Updated with CHF)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -367,13 +440,14 @@ export default function DataInput() {
                 <li>• Policy rates: Central bank websites</li>
                 <li>• OIS rates: Bloomberg, Refinitiv</li>
                 <li>• Government yields: Yahoo Finance, FRED</li>
+                <li>• CHF rates: SNB website, SIX Swiss Exchange</li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold mb-2">📈 Economic Data</h4>
               <ul className="space-y-1 text-muted-foreground">
-                <li>• Employment: BLS, Eurostat, ONS</li>
+                <li>• Employment: BLS, Eurostat, ONS, SECO (CHF)</li>
                 <li>• PMI: S&P Global, national stat offices</li>
                 <li>• GDP: National statistical offices</li>
               </ul>
@@ -383,6 +457,7 @@ export default function DataInput() {
               <h4 className="font-semibold mb-2">💸 Positioning</h4>
               <ul className="space-y-1 text-muted-foreground">
                 <li>• COT data: CFTC.gov (updated Fridays)</li>
+                <li>• CHF futures: Swiss Franc (6S)</li>
                 <li>• Large speculator positions</li>
                 <li>• Calculate 52-week percentiles</li>
               </ul>

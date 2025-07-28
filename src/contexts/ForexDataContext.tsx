@@ -11,7 +11,9 @@ import {
   detectMarketRegime,
   calculateCurrencyScore,
   calculateTradingSignal,
-  runModelTests
+  runModelTests,
+  updateVIXHistory,
+  updateGoldOutperformDays
 } from '../lib/modelCalculations';
 
 interface ForexDataContextType {
@@ -46,7 +48,7 @@ interface ForexDataContextType {
 
 const ForexDataContext = createContext<ForexDataContextType | undefined>(undefined);
 
-// Default data based on the model specifications
+// Default data based on the model specifications - FIXED: Added CHF
 const defaultVixData: VIXData = {
   current: 35,
   last20Days: Array(20).fill(0).map((_, i) => 20 + i * 0.5)
@@ -56,7 +58,8 @@ const defaultMarketData: MarketData = {
   spyReturn: -2.5,
   gldReturn: 1.5,
   spyMA20: 450,
-  spyPrice: 440
+  spyPrice: 440,
+  goldOutperformDays: 0
 };
 
 const defaultCurrencyData = {
@@ -203,6 +206,31 @@ const defaultCurrencyData = {
       netPosition: 15000,
       percentile52Week: 55
     } as PositioningData
+  },
+  // ADDED: CHF currency support
+  CHF: {
+    ratePolicy: {
+      currentRate: 1.75,
+      terminalRate: 2.00,
+      currency: 'CHF',
+      hawkishWords: 1,
+      dovishWords: 1
+    } as RatePolicyData,
+    growthMomentum: {
+      employment: { currency: 'CHF', value: 2.1 }, // Unemployment rate (Swiss style - lower is better)
+      pmi: 49.5,
+      gdpQoQ: 1.0
+    } as GrowthMomentumData,
+    realInterestEdge: {
+      currency: 'CHF',
+      twoYearYield: 1.8,
+      breakeven5Y5Y: 1.5 // SNB target is 0-2%, using 1.5% as estimate
+    } as RealInterestEdgeData,
+    positioning: {
+      currency: 'CHF',
+      netPosition: -25000,
+      percentile52Week: 20
+    } as PositioningData
   }
 };
 
@@ -240,11 +268,30 @@ export function ForexDataProvider({ children }: { children: ReactNode }) {
   };
 
   const updateVixData = (data: Partial<VIXData>) => {
-    setVixData(prev => ({ ...prev, ...data }));
+    setVixData(prev => {
+      // FIXED: Proper VIX history management
+      if (data.current !== undefined && data.current !== prev.current) {
+        const newHistory = updateVIXHistory(data.current, prev.last20Days);
+        return { ...prev, ...data, last20Days: newHistory };
+      }
+      return { ...prev, ...data };
+    });
   };
 
   const updateMarketData = (data: Partial<MarketData>) => {
-    setMarketData(prev => ({ ...prev, ...data }));
+    setMarketData(prev => {
+      const newData = { ...prev, ...data };
+      
+      // FIXED: Update gold outperformance days tracking
+      if (data.spyReturn !== undefined || data.gldReturn !== undefined) {
+        const spyReturn = data.spyReturn ?? prev.spyReturn;
+        const gldReturn = data.gldReturn ?? prev.gldReturn;
+        const previousDays = prev.goldOutperformDays || 0;
+        newData.goldOutperformDays = updateGoldOutperformDays(spyReturn, gldReturn, previousDays);
+      }
+      
+      return newData;
+    });
   };
 
   const updateCurrencyData = (currency: string, data: any) => {

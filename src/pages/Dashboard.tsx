@@ -54,6 +54,9 @@ export default function Dashboard() {
     { base: 'USD', quote: 'JPY', name: 'USD/JPY' },
     { base: 'AUD', quote: 'USD', name: 'AUD/USD' },
     { base: 'USD', quote: 'CAD', name: 'USD/CAD' },
+    { base: 'USD', quote: 'CHF', name: 'USD/CHF' }, // ADDED
+    { base: 'EUR', quote: 'CHF', name: 'EUR/CHF' }, // ADDED
+    { base: 'GBP', quote: 'JPY', name: 'GBP/JPY' }, // ADDED Cross pair
   ];
 
   const RegimeIcon = getRegimeIcon(marketRegime);
